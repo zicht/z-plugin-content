@@ -1,0 +1,86 @@
+# Content options
+content:
+    # Dirs that contain user content (i.e. uploaded files and such)
+    dir:            [ 'web/media' ]
+
+    db:
+        structure:  ""
+        full:       ""
+
+tasks:
+    content.backup:
+        help: |
+            Backup remote content into a content archive.
+
+            Provide --with-files if you want to include content directories.
+
+            The content archive will contain a dump of the configured envs[target_env].db name,
+            and all content files of the remote installation
+        set:
+            target_env: ?
+            _backup_file: sprintf("content-%s-%s%s.tar.gz", target_env, now, files ? "-with-files")
+        flags:
+            files: false
+        do:
+            - |
+                ssh $(envs[target_env].ssh) "                                                        \
+                    cd $(envs[target_env].root);                                                     \
+                    $(
+                        content.db.structure || content.db.full
+                        ? cat(
+                            sprintf("mysqldump -Q --opt -d %s %s    >  db.sql;", envs[target_env].db, str(content.db.structure)),
+                            sprintf("mysqldump -Q --opt %s %s       >> db.sql;", envs[target_env].db, str(content.db.full))
+                        )
+                        : sprintf("mysqldump -Q --opt %s > db.sql;", envs[target_env].db)
+                    ) \
+                    tar zc$(verbose ? "v")f $(_backup_file) $(files == "y" ? content.dir) db.sql;      \
+                    rm db.sql                                                           \
+                "
+            - rsync $(verbose ? "--progress") $(envs[target_env].ssh):$(envs[target_env].root)$(_backup_file) ./$(_backup_file)
+            - ssh $(envs[target_env].ssh) "rm $(envs[target_env].root)$(_backup_file)"
+
+        yield: _backup_file
+
+    content.pull:
+        help: |
+            Pull a content archive from a remote env into the local installation.
+
+        set:
+            target_env:  ?
+            files: ? "n"
+            file: tasks.content.backup
+        do:
+            - @content.load
+            - rm $(file)
+
+    content.push:
+        help: |
+            Push a content archive to a remote environment.
+            The content archive is typically built by a content:dump or content:backup command:
+
+                z content:backup staging
+                z content:push production ./content-staging-*.tar.gz
+        unless: !confirm(sprintf("You are pushing content archive <comment>%s</comment> to environment <comment>%s</comment>, are you sure?", file, target_env))
+        set:
+            target_env:  ?
+            file: ?
+        do:
+            - scp $(file) $(envs[target_env].ssh):$(envs[target_env].root)$(file)
+            - ssh $(envs[target_env].ssh) "cd $(envs[target_env].root); tar zx$(verbose ? "v")f $(file); mysql $(envs[target_env].db) < ./db.sql; rm $(file); rm db.sql;"
+
+    # Load a content archive
+    content.load:
+        help: |
+            Load a content archive into the local environment.
+
+            The local environment must be specified in your z.yml file as such:
+
+                envs:
+                    local: {db: "my_db_name", root: .}
+        set:
+            file: ?
+        do: |
+            cd $(envs.local.root);
+            tar zxvf $(file);
+            mysql $(envs.local.db) < db.sql
+            rm db.sql
