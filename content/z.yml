@@ -1,3 +1,5 @@
+# @version ">=2.0"
+
 # Content options
 content:
     # Dirs that contain user content (i.e. uploaded files and such)
@@ -16,7 +18,7 @@ tasks:
 
             The content archive will contain a dump of the configured envs[target_env].db name,
             and all content files of the remote installation
-        set:
+        args:
             target_env: ?
             _backup_file: sprintf("content-%s-%s%s.tar.gz", target_env, now, files ? "-with-files")
         flags:
@@ -45,7 +47,7 @@ tasks:
         help: |
             Pull a content archive from a remote env into the local installation.
 
-        set:
+        args:
             target_env:  ?
             files: ? "n"
             file: tasks.content.backup
@@ -61,7 +63,7 @@ tasks:
                 z content:backup staging
                 z content:push production ./content-staging-*.tar.gz
         unless: !confirm(sprintf("You are pushing content archive <comment>%s</comment> to environment <comment>%s</comment>, are you sure?", file, target_env))
-        set:
+        args:
             target_env:  ?
             file: ?
         do:
@@ -77,7 +79,7 @@ tasks:
 
                 envs:
                     local: {db: "my_db_name", root: .}
-        set:
+        args:
             file: ?
         do: |
             cd $(envs.local.root);
