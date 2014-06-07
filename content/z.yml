@@ -35,10 +35,10 @@ tasks:
                         )
                         : sprintf("mysqldump -Q --opt %s > db.sql;", envs[target_env].db)
                     ) \
-                    tar zc$(verbose ? "v")f $(_backup_file) $(files == "y" ? content.dir) db.sql;      \
+                    tar zc$(VERBOSE ? "v")f $(_backup_file) $(files == "y" ? content.dir) db.sql;      \
                     rm db.sql                                                           \
                 "
-            - rsync $(verbose ? "--progress") $(envs[target_env].ssh):$(envs[target_env].root)$(_backup_file) ./$(_backup_file)
+            - rsync $(VERBOSE ? "--progress") $(envs[target_env].ssh):$(envs[target_env].root)$(_backup_file) ./$(_backup_file)
             - ssh $(envs[target_env].ssh) "rm $(envs[target_env].root)$(_backup_file)"
 
         yield: _backup_file
@@ -68,7 +68,7 @@ tasks:
             file: ?
         do:
             - scp $(file) $(envs[target_env].ssh):$(envs[target_env].root)$(file)
-            - ssh $(envs[target_env].ssh) "cd $(envs[target_env].root); tar zx$(verbose ? "v")f $(file); mysql $(envs[target_env].db) < ./db.sql; rm $(file); rm db.sql;"
+            - ssh $(envs[target_env].ssh) "cd $(envs[target_env].root); tar zx$(VERBOSE ? "v")f $(file); mysql $(envs[target_env].db) < ./db.sql; rm $(file); rm db.sql;"
 
     # Load a content archive
     content.load:
