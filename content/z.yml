@@ -30,10 +30,10 @@ tasks:
                     $(
                         content.db.structure || content.db.full
                         ? cat(
-                            sprintf("mysqldump -Q --opt -d %s %s    >  db.sql;", envs[target_env].db, str(content.db.structure)),
-                            sprintf("mysqldump -Q --opt %s %s       >> db.sql;", envs[target_env].db, str(content.db.full))
+                            sprintf("mysqldump %s -Q --opt -d %s %s    >  db.sql;", envs[target_env].db_defaults_file, envs[target_env].db, str(content.db.structure)),
+                            sprintf("mysqldump %s -Q --opt %s %s       >> db.sql;", envs[target_env].db_defaults_file, envs[target_env].db, str(content.db.full))
                         )
-                        : sprintf("mysqldump -Q --opt %s > db.sql;", envs[target_env].db)
+                        : sprintf("mysqldump %s -Q --opt %s > db.sql;", envs[target_env].db_defaults_file, envs[target_env].db)
                     ) \
                     tar zc$(VERBOSE ? "v")f $(_backup_file) $(files == "y" ? content.dir) db.sql;      \
                     rm db.sql                                                           \
@@ -68,7 +68,7 @@ tasks:
             file: ?
         do:
             - scp $(file) $(envs[target_env].ssh):$(envs[target_env].root)$(file)
-            - ssh $(envs[target_env].ssh) "cd $(envs[target_env].root); tar zx$(VERBOSE ? "v")f $(file); mysql $(envs[target_env].db) < ./db.sql; rm $(file); rm db.sql;"
+            - ssh $(envs[target_env].ssh) "cd $(envs[target_env].root); tar zx$(VERBOSE ? "v")f $(file); mysql $(envs[target_env].db_defaults_file) $(envs[target_env].db) < ./db.sql; rm $(file); rm db.sql;"
 
     # Load a content archive
     content.load:
