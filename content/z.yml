@@ -14,7 +14,7 @@ tasks:
         help: |
             Backup remote content into a content archive.
 
-            Provide --with-files if you want to include content directories.
+            Provide --files if you want to include content directories.
 
             The content archive will contain a dump of the configured envs[target_env].db name,
             and all content files of the remote installation
