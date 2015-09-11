@@ -49,7 +49,7 @@ tasks:
 
         args:
             target_env:  ?
-            files: ? "n"
+            files: ? ""
             file: tasks.content.backup
         do:
             - @content.load
