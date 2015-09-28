@@ -86,3 +86,28 @@ tasks:
             tar zxvf $(file);
             mysql $(envs.local.db) < db.sql
             rm db.sql
+
+    content.download:
+        help: |
+            Download the content.dirs from the remote
+        args:
+            target_env: ?
+        flags:
+            simulate: false
+            delete: false
+        do: |
+            @(for d in content.dir)
+                rsync -ruv$(simulate ? "n") $(envs[target_env].ssh):$(envs[target_env].root)$(d)/ $(envs.local.root)$(d)/
+
+    content.upload:
+        help: |
+            Upload the content.dirs to the remote
+        args:
+            target_env: ?
+        flags:
+            simulate: false
+            delete: false
+        do: |
+            @(for d in content.dir)
+                rsync -ruv$(simulate ? "n") $(envs.local.root)$(d)/ $(envs[target_env].ssh):$(envs[target_env].root)$(d)/
+
