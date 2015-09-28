@@ -87,7 +87,7 @@ tasks:
             mysql $(envs.local.db) < db.sql
             rm db.sql
 
-    content.download:
+    content.download-files:
         help: |
             Download the content.dirs from the remote
         args:
@@ -97,9 +97,9 @@ tasks:
             delete: false
         do: |
             @(for d in content.dir)
-                rsync -ruv$(simulate ? "n") $(envs[target_env].ssh):$(envs[target_env].root)$(d)/ $(envs.local.root)$(d)/
+                rsync -ruv$(simulate ? "n") $(delete ? "--delete") $(envs[target_env].ssh):$(envs[target_env].root)$(d)/ $(envs.local.root)$(d)/
 
-    content.upload:
+    content.upload-files:
         help: |
             Upload the content.dirs to the remote
         args:
@@ -109,5 +109,4 @@ tasks:
             delete: false
         do: |
             @(for d in content.dir)
-                rsync -ruv$(simulate ? "n") $(envs.local.root)$(d)/ $(envs[target_env].ssh):$(envs[target_env].root)$(d)/
-
+                rsync -ruv$(simulate ? "n") $(delete ? "--delete") $(envs.local.root)$(d)/ $(envs[target_env].ssh):$(envs[target_env].root)$(d)/
