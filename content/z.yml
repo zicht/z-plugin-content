@@ -62,12 +62,15 @@ tasks:
 
                 z content:backup staging
                 z content:push production ./content-staging-*.tar.gz
-        unless: !confirm(sprintf("You are pushing content archive <comment>%s</comment> to environment <comment>%s</comment>, are you sure?", file, target_env))
+        unless: !confirm(sprintf("You are %spushing content archive <comment>%s</comment> to environment <comment>%s</comment>, are you sure?", drop ? "dropping and ", file, target_env))
         args:
             target_env:  ?
             file: ?
+        flags:
+            drop: false
         do:
             - scp $(file) $(envs[target_env].ssh):$(envs[target_env].root)$(file)
+            - @(if drop) ssh $(envs[target_env].ssh) "mysqladmin drop -f $(envs[target_env].db); mysqladmin create $(envs[target_env].db)"
             - ssh $(envs[target_env].ssh) "cd $(envs[target_env].root); tar zx$(VERBOSE ? "v")f $(file); mysql $(envs[target_env].db_defaults_file) $(envs[target_env].db) < ./db.sql; rm $(file); rm db.sql;"
 
     # Load a content archive
@@ -110,28 +113,6 @@ tasks:
         do: |
             @(for d in content.dir)
                 rsync -ruv$(simulate ? "n") $(content.exclude_string) $(delete ? "--delete") $(envs.local.root)$(d)/ $(envs[target_env].ssh):$(envs[target_env].root)$(d)/
-
-    content.push-file:
-        help: |
-            copy file(s) from remote environment
-        flags:
-            recursive: false
-        args:
-            target_env: ?
-            file: ?
-        do: |
-            scp $(recursive ? "-R") $(envs[target_env].ssh):$(envs[target_env].root)$(file) ./$(file)
-
-    content.pull-file:
-        help: |
-            copy remote files to remote environment
-        flags:
-            recursive: false
-        args:
-            target_env: ?
-            file: ?
-        do:
-            - scp $(recursive ? "-R") ./$(file) $(envs[target_env].ssh):$(envs[target_env].root)$(file)
 
     content.db.push:
         help: |
