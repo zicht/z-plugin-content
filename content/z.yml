@@ -20,6 +20,7 @@ tasks:
             and all content files of the remote installation
         args:
             target_env: ?
+        set:
             _backup_file: sprintf("content-%s-%s%s.tar.gz", target_env, now, files ? "-with-files")
         flags:
             files: false
@@ -35,7 +36,7 @@ tasks:
                         )
                         : sprintf("mysqldump %s -Q --opt %s > db.sql;", envs[target_env].db_defaults_file, envs[target_env].db)
                     ) \
-                    tar zc$(VERBOSE ? "v")f $(_backup_file) $(files == "y" ? content.dir) db.sql;      \
+                    tar zc$(VERBOSE ? "v")f $(_backup_file) $(files ? content.dir) db.sql;      \
                     rm db.sql                                                           \
                 "
             - rsync $(VERBOSE ? "--progress") $(envs[target_env].ssh):$(envs[target_env].root)$(_backup_file) ./$(_backup_file)
@@ -49,8 +50,9 @@ tasks:
 
         args:
             target_env:  ?
-            files: ? ""
             file: tasks.content.backup
+        flags:
+            files: false
         do:
             - @content.load
             - rm $(file)
