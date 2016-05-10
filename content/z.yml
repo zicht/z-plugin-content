@@ -48,11 +48,13 @@ tasks:
         help: |
             Pull a content archive from a remote env into the local installation.
 
+            If flag <info>nodrop</info> is given, the database won't be dropped. Otherwise the local database will be dropped and recreated.
         args:
             target_env:  ?
             file: tasks.content.backup
         flags:
             files: false
+            nodrop: false
         do:
             - @content.load
             - rm $(file)
@@ -84,13 +86,27 @@ tasks:
 
                 envs:
                     local: {db: "my_db_name", root: .}
+
+            If flag <info>nodrop</info> is given, the database won't be dropped. Otherwise the local database will be dropped and recreated.
         args:
             file: ?
+        flags:
+            nodrop: false
+        pre:
+            - @(if !nodrop) @_content_clear_db
         do: |
             cd $(envs.local.root);
             tar zxvf $(file);
             mysql $(envs.local.db) < db.sql
             rm db.sql
+
+
+    _content_clear_db:
+        do:
+            - echo "Dropping database <comment>$(envs.local.db)</comment>"
+            - mysql -e "drop database if exists $(envs.local.db)"
+            - echo "Creating database <comment>$(envs.local.db)</comment>"
+            - mysql -e "create database $(envs.local.db)"
 
     content.download-files:
         help: |
