@@ -116,9 +116,10 @@ tasks:
         flags:
             simulate: false
             delete: false
+            exclude_cache: true
         do: |
             @(for d in content.dir)
-                rsync -ruv$(simulate ? "n") $(delete ? "--delete") $(envs[target_env].ssh):$(envs[target_env].root)$(d)/ $(envs.local.root)$(d)/
+                rsync -ruv$(simulate ? "n") $(delete ? "--delete") $(exclude_cache ? "--exclude cache") $(envs[target_env].ssh):$(envs[target_env].root)$(d)/ $(envs.local.root)$(d)/
 
     content.upload-files:
         help: |
@@ -128,9 +129,10 @@ tasks:
         flags:
             simulate: false
             delete: false
+            exclude_cache: true
         do: |
             @(for d in content.dir)
-                rsync -ruv$(simulate ? "n") $(content.exclude_string) $(delete ? "--delete") $(envs.local.root)$(d)/ $(envs[target_env].ssh):$(envs[target_env].root)$(d)/
+                rsync -ruv$(simulate ? "n") $(content.exclude_string) $(delete ? "--delete") $(exclude_cache ? "--exclude cache") $(envs.local.root)$(d)/ $(envs[target_env].ssh):$(envs[target_env].root)$(d)/
 
     content.db.push:
         help: |
