@@ -118,7 +118,7 @@ tasks:
             delete: false
         do: |
             @(for d in content.dir)
-                rsync -ruv$(simulate ? "n") $(VERBOSE ? "--progress") $(delete ? "--delete") $(envs[target_env].ssh):$(envs[target_env].root)$(d)/ $(envs.local.root)$(d)/
+                rsync -ruv$(simulate ? "n") $(VERBOSE ? "--progress") $(content.exclude_string) $(delete ? "--delete") $(envs[target_env].ssh):$(envs[target_env].root)$(d)/ $(envs.local.root)$(d)/
 
     content.upload-files:
         help: |
