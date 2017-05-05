@@ -5,166 +5,99 @@ content:
     # Dirs that contain user content (i.e. uploaded files and such)
     dir:            [ 'web/media' ]
     exclude:        [ "cache" ]
-    db:
-        structure:  ""
-        full:       ""
+    local:
+        db:
+            host: mysql.zicht.intern
+            user: dev
 
 tasks:
-    content.backup:
+    content.files.pull:
         help: |
-            Backup remote content into a content archive.
+            Sync remote with local content folder.
 
-            Provide --files if you want to include content directories.
+            Use the content.dir to define the folder to sync and
+            content.exlude for exlusion of folder within that folder.
 
-            The content archive will contain a dump of the configured envs[target_env].db name,
-            and all content files of the remote installation
+            The --rsync-flags flag can be used to overwrite the rsync flags, so for example:
+
+            z content:files:pull --rsync-flags="-ru --delete --inplace" production
+
+            will genertae something like:
+
+            rsync -ru --delete --inplace example@example.com:/home/example/web/media/ ./web/media/
         args:
             target_env: ?
-        set:
-            _backup_file: sprintf("content-%s-%s%s.tar.gz", target_env, now, files ? "-with-files")
-        flags:
-            files: false
-        do:
-            - |
-                ssh $(envs[target_env].ssh) "                                                        \
-                    cd $(envs[target_env].root);                                                     \
-                    $(
-                        content.db.structure || content.db.full
-                        ? cat(
-                            sprintf("mysqldump %s -Q --opt -d %s %s    >  db.sql;", envs[target_env].db_defaults_file, envs[target_env].db, str(content.db.structure)),
-                            sprintf("mysqldump %s -Q --opt %s %s       >> db.sql;", envs[target_env].db_defaults_file, envs[target_env].db, str(content.db.full))
-                        )
-                        : sprintf("mysqldump %s -Q --opt %s > db.sql;", envs[target_env].db_defaults_file, envs[target_env].db)
-                    ) \
-                    tar zc$(VERBOSE ? "v")f $(_backup_file) $(files ? content.dir) db.sql;      \
-                    rm db.sql                                                           \
-                "
-            - rsync $(VERBOSE ? "--progress") $(envs[target_env].ssh):$(envs[target_env].root)$(_backup_file) ./$(_backup_file)
-            - ssh $(envs[target_env].ssh) "rm $(envs[target_env].root)$(_backup_file)"
-
-        yield: _backup_file
-
-    content.pull:
-        help: |
-            Pull a content archive from a remote env into the local installation.
-
-            If flag <info>nodrop</info> is given, the database won't be dropped. Otherwise the local database will be dropped and recreated.
-        args:
-            target_env:  ?
-            file: tasks.content.backup
-        flags:
-            files: false
-            nodrop: false
-        do:
-            - @content.load
-            - rm $(file)
-
-    content.push:
-        help: |
-            Push a content archive to a remote environment.
-            The content archive is typically built by a content:dump or content:backup command:
-
-                z content:backup staging
-                z content:push production ./content-staging-*.tar.gz
-        unless: !confirm(sprintf("You are %spushing content archive <comment>%s</comment> to environment <comment>%s</comment>, are you sure?", drop ? "dropping and ", file, target_env))
-        args:
-            target_env:  ?
-            file: ?
-        flags:
-            drop: false
-        do:
-            - scp $(file) $(envs[target_env].ssh):$(envs[target_env].root)$(file)
-            - @(if drop) ssh $(envs[target_env].ssh) "mysqladmin drop -f $(envs[target_env].db); mysqladmin create $(envs[target_env].db)"
-            - ssh $(envs[target_env].ssh) "cd $(envs[target_env].root); tar zx$(VERBOSE ? "v")f $(file); mysql $(envs[target_env].db_defaults_file) $(envs[target_env].db) < ./db.sql; rm $(file); rm db.sql;"
-
-    # Load a content archive
-    content.load:
-        help: |
-            Load a content archive into the local environment.
-
-            The local environment must be specified in your z.yml file as such:
-
-                envs:
-                    local: {db: "my_db_name", root: .}
-
-            If flag <info>nodrop</info> is given, the database won't be dropped. Otherwise the local database will be dropped and recreated.
-        args:
-            file: ?
-        flags:
-            nodrop: false
-        pre:
-            - @(if !nodrop) @_content_clear_db
-        do: |
-            cd $(envs.local.root);
-            tar zxvf $(file);
-            mysql $(envs.local.db) < db.sql
-            rm db.sql
-
-
-    _content_clear_db:
-        do:
-            - echo "Dropping database <comment>$(envs.local.db)</comment>"
-            - mysql -e "drop database if exists $(envs.local.db)"
-            - echo "Creating database <comment>$(envs.local.db)</comment>"
-            - mysql -e "create database $(envs.local.db)"
-
-    content.download-files:
-        help: |
-            Download the content.dirs from the remote
-        args:
-            target_env: ?
-        flags:
-            simulate: false
-            delete: false
-        do: |
-            @(for d in content.dir)
-                rsync -ruv$(simulate ? "n") $(VERBOSE ? "--progress") $(content.exclude_string) $(delete ? "--delete") $(envs[target_env].ssh):$(envs[target_env].root)$(d)/ $(envs.local.root)$(d)/
-
-    content.upload-files:
-        help: |
-            Upload the content.dirs to the remote
-        args:
-            target_env: ?
-        flags:
-            simulate: false
-            delete: false
-        do: |
-            @(for d in content.dir)
-                rsync -ruv$(simulate ? "n") $(VERBOSE ? "--progress") $(content.exclude_string) $(delete ? "--delete") $(envs.local.root)$(d)/ $(envs[target_env].ssh):$(envs[target_env].root)$(d)/
-
-    content.db.push:
-        help: |
-            push local database/table to remote database/table
-        flags:
-            backup: true
         opts:
-            table: false
-            where: false
-            local_user: false
-            local_host: false
-            local_port: false
-            local_password: false
+            rsync_flags:
+        flags:
+            simulate: false
+            delete: false
+        do: |
+            @(for d in content.dir)
+                $(fmt.cmd.rsync(fmt.path(sprintf("%s:%s", envs[target_env].ssh, envs[target_env].root), d),fmt.path(envs.local.root, d)))
+
+    content.files.push:
+        help: |
+            Sync local with remote content folder.
+
+            Use the content.dir to define the folder to sync and
+            content.exlude for exlusion of folder within that folder.
+
+            The --rsync-flags flag can be used to overwrite the rsync flags, so for example:
+
+            z content:files:push --rsync-flags="-ru --delete --inplace" production
+
+            will genertae something like:
+
+            rsync -ru --delete --inplace ./web/media/ example@example.com:/home/example/web/media/
         args:
             target_env: ?
-            local_db: ? false
-        do:
-            - @(if backup != false) ssh $(envs[target_env].ssh) "mysqldump -Q --opt $(content.sql_where)$(envs[target_env].db) $(table ? table)| gzip -c -9" > $(content.push_backup_file)
-            - mysqldump $(content.local_db_args) $(table ? table) $(content.sql_where)| ssh $(envs[target_env].ssh) "mysql $(envs[target_env].db)"
+        opts:
+            rsync_flags:
+        flags:
+            simulate: false
+            delete: false
+        do: |
+            @(for d in content.dir)
+                $(fmt.cmd.rsync(fmt.path(envs.local.root, d), fmt.path(sprintf("%s:%s", envs[target_env].ssh, envs[target_env].root), d)))
 
     content.db.pull:
         help: |
-            pull remote database/table to local database/file
+            Pull remote database/table to local database/table.
+
+            If flag <info>nodrop</info> is given, the database won't be dropped. Otherwise the local database will be dropped and recreated (unless the table flag is provided).
+
+            With the <info>where</info> and <info>table</info> flag is it posible to only dump a certain table that match the ware statement.
+        flags:
+            nodrop: false
         opts:
             table: false
             where: false
-            local_user: false
-            local_host: false
-            local_port: false
-            local_password: false
             file: false
+
+            local_user: content.local.db.user
+            local_host: content.local.db.host
+            local_port:
+            local_password:
         args:
             target_env: ?
             local_db: ? false
-        do:
-            - @(if file == false) ssh $(envs[target_env].ssh) "mysqldump -Q --opt $(content.sql_where)$(envs[target_env].db) $(table ? table)| gzip -c -9" | gzip -d - | mysql $(content.local_db_args)
-            - @(if file != false) ssh $(envs[target_env].ssh) "mysqldump -Q --opt $(content.sql_where)$(envs[target_env].db) $(table ? table)| gzip -c -9" > $(file).tar.gz
+        do: $(fmt.mysql_pull)
+    content.db.push:
+         help: |
+             Push local database/table to remote database/table
+         flags:
+             backup: true
+         opts:
+             table: false
+             where: false
+             local_user: false
+             local_host: false
+             local_port: false
+             local_password: false
+         args:
+             target_env: ?
+             local_db: ? false
+         do:
+             - @(if backup != false) ssh $(envs[target_env].ssh) "mysqldump -Q --opt $(content.sql_where)$(envs[target_env].db) $(table ? table)| gzip -c -9" > $(content.push_backup_file)
+             - mysqldump $(fmt.local_mysql_args) $(table ? table) $(content.sql_where)| ssh $(envs[target_env].ssh) "mysql $(envs[target_env].db)"
