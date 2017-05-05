@@ -9,7 +9,6 @@
 namespace Zicht\Tool\Plugin\Content;
 
 use Zicht\Tool\Container\Container;
-use Symfony\Component\Process\ProcessBuilder;
 use Zicht\Tool\Plugin as BasePlugin;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 
