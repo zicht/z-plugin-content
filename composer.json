@@ -4,11 +4,11 @@
     "license": "MIT",
     "authors": [
         {
-            "name": "Gerard van Helden",
-            "email": "gerard@zicht.nl"
+            "name": "Philip bergman",
+            "email": "philip@zicht.nl"
         }
     ],
     "require": {
-
+        "php": ">=5.6.0"
     }
 }
