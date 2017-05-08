@@ -92,15 +92,11 @@ tasks:
          flags:
              backup: true
          opts:
-             table: false
-             where: false
-             local_user: false
-             local_host: false
-             local_port: false
-             local_password: false
+             backup_file: false #deze qua naam iets duidelijk dan alleen 'file' ^^
          args:
-             target_env: ?
-             local_db: ? false
+             target_env: ? f
+             source_file: ? false
+             #todo: source_file gebruiken ipv database
          do:
              - @(if backup != false) ssh $(envs[target_env].ssh) "mysqldump -Q --opt $(content.sql_where)$(envs[target_env].db) $(table ? table)| gzip -c -9" > $(fmt.sql_backup_file)
              - mysqldump $(fmt.local_mysql_args) $(table ? table) $(content.sql_where)| ssh $(envs[target_env].ssh) "mysql $(envs[target_env].db)"

@@ -170,9 +170,9 @@ class Plugin extends BasePlugin
             }
         );
 
-        $container->method(['fmt','sql_backup_file'],
+        $container->decl(['fmt','sql_backup_file'],
             function(Container $c) {
-                if ("" !== ($file = $c->resolve('file'))) {
+                if ($file = $c->resolve('file')) {
                     return $file;
                 } else {
                     return sprintf(
