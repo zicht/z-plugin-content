@@ -69,7 +69,7 @@ tasks:
 
             With the <info>where</info> and <info>table</info> flag is it posible to only dump a certain table that match the WHERE statement.
         flags:
-            drop: false
+            drop: true
         opts:
             table: false
             where: false
