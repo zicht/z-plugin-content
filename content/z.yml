@@ -22,7 +22,7 @@ tasks:
 
             z content:files:pull --rsync-flags="-ru --delete --inplace" production
 
-            will genertae something like:
+            will generate something like:
 
             rsync -ru --delete --inplace example@example.com:/home/example/web/media/ ./web/media/
         args:
@@ -47,7 +47,7 @@ tasks:
 
             z content:files:push --rsync-flags="-ru --delete --inplace" production
 
-            will genertae something like:
+            will generate something like:
 
             rsync -ru --delete --inplace ./web/media/ example@example.com:/home/example/web/media/
         args:
@@ -67,9 +67,9 @@ tasks:
 
             If flag <info>nodrop</info> is given, the database won't be dropped. Otherwise the local database will be dropped and recreated (unless the table flag is provided).
 
-            With the <info>where</info> and <info>table</info> flag is it posible to only dump a certain table that match the ware statement.
+            With the <info>where</info> and <info>table</info> flag is it posible to only dump a certain table that match the WHERE statement.
         flags:
-            nodrop: false
+            drop: false
         opts:
             table: false
             where: false
@@ -85,7 +85,10 @@ tasks:
         do: $(fmt.mysql_pull)
     content.db.push:
          help: |
-             Push local database/table to remote database/table
+             Push local database/table to remote database/table.
+
+             The backup flag (that is default true) will make a backup of the tables or database before the it pushes the
+             content to the given envirement. See also the explain (--explain) flag.
          flags:
              backup: true
          opts:

@@ -77,7 +77,7 @@ class Plugin extends BasePlugin
             ['fmt', 'mysql_pull'],
             function(Container $c) {
                 $line = [];
-                if (!$c->resolve('nodrop') && !$c->resolve('table')) {
+                if (!$c->resolve('drop') && !$c->resolve('table')) {
                     $line[] = ["mysql", 0];
                     $line[] = [$c->resolve('fmt.local_mysql_args'), 8];
                     $line[] = [sprintf('-e "DROP DATABASE IF EXISTS %1$s; CREATE DATABASE %1$s;" &&', $c->resolve('content.local_db')), 8];
