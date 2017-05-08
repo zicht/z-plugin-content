@@ -87,8 +87,8 @@ tasks:
          help: |
              Push local database/table to remote database/table.
 
-             The backup flag (that is default true) will make a backup of the tables or database before the it pushes the
-             content to the given envirement. See also the explain (--explain) flag.
+             The backup flag (that is default true) will make a backup of the tables or database before it pushes the
+             content to the given environment. See also the explain (--explain) flag.
          flags:
              backup: true
          opts:
