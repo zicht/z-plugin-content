@@ -102,5 +102,5 @@ tasks:
              target_env: ?
              local_db: ? false
          do:
-             - @(if backup != false) ssh $(envs[target_env].ssh) "mysqldump -Q --opt $(content.sql_where)$(envs[target_env].db) $(table ? table)| gzip -c -9" > $(content.push_backup_file)
+             - @(if backup != false) ssh $(envs[target_env].ssh) "mysqldump -Q --opt $(content.sql_where)$(envs[target_env].db) $(table ? table)| gzip -c -9" > $(fmt.sql_backup_file)
              - mysqldump $(fmt.local_mysql_args) $(table ? table) $(content.sql_where)| ssh $(envs[target_env].ssh) "mysql $(envs[target_env].db)"
