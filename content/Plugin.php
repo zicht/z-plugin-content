@@ -76,7 +76,7 @@ class Plugin extends BasePlugin
         $container->decl(
             ['fmt', 'cmd', 'mysql_local_drop'],
             function(Container $c) {
-                if ($c->resolve('drop') && !$c->resolve('table')) {
+                if ($c->resolve('drop') && !$c->resolve('table') && !$c->resolve('backup')) {
                     return sprintf(
                         'mysql %1$s -e "DROP DATABASE IF EXISTS %2$s; CREATE DATABASE %2$s;',
                         $c->resolve('fmt.local_mysql_args'),
@@ -100,7 +100,11 @@ class Plugin extends BasePlugin
                 if ($table = $c->resolve('table')) {
                     $mysqldump .= " ${table}";
                 }
-                if ($file = $c->resolve('file')) {
+                if ($c->resolve('backup') || ($file = $c->resolve('file'))) {
+                    if (empty($file)) {
+                        $file = $c->resolve('fmt.sql_backup_file');
+                    }
+
                     $out = ($file === '-') ? "> /dev/stdout" : "> ${file}";
                 } else {
                     $out = sprintf(

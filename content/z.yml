@@ -65,11 +65,14 @@ tasks:
         help: |
             Pull remote database/table to local database/table.
 
-            If flag <info>nodrop</info> is given, the database won't be dropped. Otherwise the local database will be dropped and recreated (unless the table flag is provided).
+            If flag <info>nodrop</info> is given, the database won't be dropped. Otherwise the local database will be dropped and recreated (unless the table or backup flag is provided).
 
-            With the <info>where</info> and <info>table</info> flag is it posible to only dump a certain table that match the ware statement.
+            The <info>where</info> and <info>table</info> flag makes it posible to only dump a certain table that match the where statement (see man mysqldump).
+
+            When the backup flag is provided it will only create a file of the remote database in this folder.
         flags:
             drop: true
+            backup: false
         opts:
             table: false
             where: false
