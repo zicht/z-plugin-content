@@ -22,7 +22,7 @@ tasks:
 
             z content:files:pull --rsync-flags="-ru --delete --inplace" production
 
-            will generate something like:
+            will genertae something like:
 
             rsync -ru --delete --inplace example@example.com:/home/example/web/media/ ./web/media/
         args:
@@ -47,7 +47,7 @@ tasks:
 
             z content:files:push --rsync-flags="-ru --delete --inplace" production
 
-            will generate something like:
+            will genertae something like:
 
             rsync -ru --delete --inplace ./web/media/ example@example.com:/home/example/web/media/
         args:
@@ -67,7 +67,7 @@ tasks:
 
             If flag <info>nodrop</info> is given, the database won't be dropped. Otherwise the local database will be dropped and recreated (unless the table flag is provided).
 
-            With the <info>where</info> and <info>table</info> flag is it posible to only dump a certain table that match the WHERE statement.
+            With the <info>where</info> and <info>table</info> flag is it posible to only dump a certain table that match the ware statement.
         flags:
             drop: true
         opts:
@@ -82,21 +82,31 @@ tasks:
         args:
             target_env: ?
             local_db: ? false
-        do: $(fmt.mysql_pull)
+        do:
+            - $(fmt.cmd.mysql_local_drop)
+            - $(fmt.cmd.mysql_pull)
     content.db.push:
-         help: |
-             Push local database/table to remote database/table.
+        help: |
+            Push mysql dump file to remote database/table.
 
-             The backup flag (that is default true) will make a backup of the tables or database before it pushes the
-             content to the given environment. See also the explain (--explain) flag.
-         flags:
-             backup: true
-         opts:
-             backup_file: false #deze qua naam iets duidelijk dan alleen 'file' ^^
-         args:
-             target_env: ? f
-             source_file: ? false
-             #todo: source_file gebruiken ipv database
-         do:
-             - @(if backup != false) ssh $(envs[target_env].ssh) "mysqldump -Q --opt $(content.sql_where)$(envs[target_env].db) $(table ? table)| gzip -c -9" > $(fmt.sql_backup_file)
-             - mysqldump $(fmt.local_mysql_args) $(table ? table) $(content.sql_where)| ssh $(envs[target_env].ssh) "mysql $(envs[target_env].db)"
+            When the dump flag is provided it will use a local mysqldump instead of file content.
+        flags:
+            backup: true
+            from_dump: false
+        opts:
+            # used if the dump opt is provided
+            table: false
+            where: false
+            local_user: content.local.db.user
+            local_host: content.local.db.host
+            local_port:
+            local_password:
+        opts:
+            table: false
+
+        args:
+            target_env: ?
+            arg: ? false
+        do:
+            - $(fmt.cmd.mysql_remote_backup)
+            - $(fmt.cmd.mysql_push)
