@@ -78,7 +78,7 @@ class Plugin extends BasePlugin
             function(Container $c) {
                 if ($c->resolve('drop') && !$c->resolve('table') && !$c->resolve('backup')) {
                     return sprintf(
-                        'mysql %1$s -e "DROP DATABASE IF EXISTS %2$s; CREATE DATABASE %2$s;',
+                        'mysql %1$s -e "DROP DATABASE IF EXISTS %2$s; CREATE DATABASE %2$s;"',
                         $c->resolve('fmt.local_mysql_args'),
                         $c->resolve('content.local_db')
                     );
