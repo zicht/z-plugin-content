@@ -8,15 +8,17 @@
 
 namespace Zicht\Tool\Plugin\Content;
 
-use Symfony\Component\Console\Exception\InvalidArgumentException;
+use Symfony\Component\Console\Input\InputOption;
+use Zicht\Tool\Command\TaskCommand;
 use Zicht\Tool\Container\Container;
 use Zicht\Tool\Plugin as BasePlugin;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
+use Zicht\Tool\PluginTaskListenerInterface;
 
 /**
  * Content plugin
  */
-class Plugin extends BasePlugin
+class Plugin extends BasePlugin implements PluginTaskListenerInterface
 {
     /**
      * @{inheritDoc}
@@ -36,17 +38,6 @@ class Plugin extends BasePlugin
                             ->prototype('scalar')->end()
                             ->performNoDeepMerging()
                         ->end()
-                        ->arrayNode('local')
-                            ->children()
-                                ->arrayNode('db')
-                                    ->children()
-                                        ->scalarNode('host')->end()
-                                        ->scalarNode('user')->end()
-                                        ->scalarNode('password')->end()
-                                    ->end()
-                                ->end()
-                            ->end()
-                        ->end()
                     ->end()
                 ->end()
             ->end()
@@ -60,131 +51,31 @@ class Plugin extends BasePlugin
     {
 
         $container->fn(
-            ['fmt', 'path'],
-            function(...$parts) {
-                $path = "";
-                for ($c = 0, $ci = count($parts); $c < $ci; $c++) {
-                    if (DIRECTORY_SEPARATOR !== substr($parts[$c], -1)) {
-                        $parts[$c] .= DIRECTORY_SEPARATOR;
-                    }
-                    $path .= $parts[$c];
-                }
-                return $path;
+            'if_exist',
+            function($fmt, ...$args) {
+                $file = (count($args) > 0) ? sprintf($fmt, ...$args) : $fmt;
+                return file_exists($file) ? $file : false;
             }
         );
 
-        $container->decl(
-            ['fmt', 'cmd', 'mysql_local_drop'],
-            function(Container $c) {
-                if ($c->resolve('drop') && !$c->resolve('table') && !$c->resolve('backup')) {
-                    return sprintf(
-                        'mysql %1$s -e "DROP DATABASE IF EXISTS %2$s; CREATE DATABASE %2$s;',
-                        $c->resolve('fmt.local_mysql_args'),
-                        $c->resolve('content.local_db')
-                    );
-                } else {
-                    return null;
-                }
-            }
+        $container->fn(
+            ['content', 'fmt','ssh','prefix'],
+            function(Container $c, $env){
+                return sprintf('ssh -C %s "', $c->resolve("envs.${env}.ssh", true));
+            },
+            true
         );
 
-        $container->decl(
-            ['fmt', 'cmd', 'mysql_pull'],
-            function(Container $c) {
-                $mysqldump  =  "mysqldump --opt";
-                $mysqldump .=  ($c->resolve('VERBOSE')) ? ' -Qv' : " -Q";
-                if ($where = $c->resolve('where')) {
-                    $mysqldump .= sprintf(' --where="%s"', $where);
-                }
-                $mysqldump .= " " . $c->resolve(sprintf('envs.%s.db', $c->resolve('target_env')));
-                if ($table = $c->resolve('table')) {
-                    $mysqldump .= " ${table}";
-                }
-                if ($c->resolve('backup') || ($file = $c->resolve('file'))) {
-                    if (empty($file)) {
-                        $file = $c->resolve('fmt.sql_backup_file');
-                    }
-
-                    $out = ($file === '-') ? "> /dev/stdout" : "> ${file}";
-                } else {
-                    $out = sprintf(
-                        "| gzip -d - | mysql %s %s",
-                        $c->resolve('fmt.local_mysql_args'),
-                        $c->resolve('content.local_db')
-                    );
-                }
-                $ssh = $c->resolve(sprintf('envs.%s.ssh', $c->resolve('target_env')));
-                return  "ssh ${ssh} \"${mysqldump}\" | gzip -c -9 ${out}";
-            }
-        );
-
-
-        $container->decl(
-            ['fmt', 'cmd', 'mysql_remote_backup'],
-            function(Container $c) {
-                if ($c->resolve('backup')) {
-                    $cmd = "mysqldump --opt ";
-                    if ($c->resolve('VERBOSE')) {
-                        $cmd .= "-Qv ";
-                    } else {
-                        $cmd .= "-Q ";
-                    }
-                    if ($where = $c->resolve('where')) {
-                        $cmd .= sprintf('--where="%s" ', $where);
-                    }
-                    $cmd .= $c->resolve(sprintf('envs.%s.db', $c->resolve('target_env'))) . " ";
-                    if ($table = $c->resolve('table')) {
-                        $cmd .= "${table} ";
-                    }
-                    $cmd .= sprintf(" | gzip -c -9 > %s", $c->resolve('fmt.sql_backup_file'));
-                    return $cmd;
-                } else {
-                    return null;
-                }
-            }
-        );
-
-        $container->decl(
-            ['fmt', 'cmd', 'mysql_push'],
-            function(Container $c) {
-                if ($c->resolve('from_dump')) {
-                    $c->set('local_db', $c->resolve('arg'));
-                    $cmd = sprintf(
-                        "mysqldump --opt %s ",
-                        $c->resolve('fmt.local_mysql_args')
-                    );
-                    if ($c->resolve('VERBOSE')) {
-                        $cmd .= "-Qv ";
-                    } else {
-                        $cmd .= "-Q ";
-                    }
-                    if ($where = $c->resolve('where')) {
-                        $cmd .= sprintf('--where="%s" ', $where);
-                    }
-                    $cmd .= $c->resolve('content.local_db') . " ";
-                    if ($table = $c->resolve('table')) {
-                        $cmd .= "${table} ";
-                    }
-                    $cmd .= "| ";
-                } else {
-                    if ($file = $c->resolve('arg')) {
-                        $cmd = sprintf("cat %s | gzip -d - | ", $c->resolve('arg'));
-                    } else {
-                        throw new InvalidArgumentException("Missing required file arg.");
-                    }
-                }
-
-                $cmd .= sprintf(
-                    'ssh %s "mysql %s"',
-                    $c->resolve(sprintf('envs.%s.ssh', $c->resolve('target_env'))),
-                    $c->resolve(sprintf('envs.%s.db', $c->resolve('target_env')))
-                );
-                return $cmd;
-            }
+        $container->fn(
+            ['content', 'fmt','ssh','suffix'],
+            function(Container $c, $env){
+                return '"';
+            },
+            true
         );
 
         $container->method(
-            ['fmt', 'cmd', 'rsync'],
+            ['content', 'fmt', 'cmd', 'rsync'],
             function(Container $c, $src, $dest) {
                 if (null !== ($args = $c->resolve('rsync-flags'))) {
                     return sprintf("rsync %s %s %s", $args, $src, $dest);
@@ -236,90 +127,75 @@ class Plugin extends BasePlugin
             }
         );
 
-        $container->decl(
-            ['fmt', 'local_mysql_args'],
-            function(Container $c) {
-                // need to check for var-name and var_name, because of a bug/conflict
-                // in z/symfony that it will not set the default option in var-name and
-                // the value given in a option not in var_name if option has a _ in the name.
-                $args = [];
-                // get input arg
-                if (null !== ($host = $c->resolve('local-host'))) {
-                    $args[] = sprintf("-h%s", $host);
-                } else {
-                    // get default value
-                    if ("" !== ($host = $c->resolve('local_host'))) {
-                        $args[] = sprintf("-h%s", $host);
-                    } else {
-                        // fallback to default settings
-                        $args[] = sprintf("-h%s", $c->resolve('content.local.db.host'));
-                    }
-                }
-                // get input arg
-                if (null !== ($user = $c->resolve('local-user'))) {
-                    $args[] = sprintf("-u%s", $user);
-                } else {
-                    // get default value
-                    if ("" !== ($user = $c->resolve('local_user'))) {
-                        $args[] = sprintf("-u%s", $user);
-                    } else {
-                        // fallback to default settings
-                        $args[] = sprintf("-u%s", $c->resolve('content.local.db.user'));
-                    }
-                }
-                // get input arg
-                if (null !== ($password = $c->resolve('local-password'))) {
-                    $args[] = sprintf("-p%s", $password);
-                } else {
-                    // get default value
-                    if ("" !== ($password = $c->resolve('local_password'))) {
-                        $args[] = sprintf("-p%s", $password);
-                    } else {
-                        // set if a global one is defined
-                        if (null !== ($password = $c->resolve('content.local.db.password'))) {
-                            $args[] = sprintf("-p%s", $password);
-                        }
-                    }
-                }
-                if (null !== ($port = $c->resolve('local-port'))) {
-                    $args[] = sprintf('-P%s', $port);
-                }
-                return implode(' ', $args);
-            }
-        );
+    }
 
-        $container->decl(['fmt','sql_backup_file'],
-            function(Container $c) {
-                if ($file = $c->resolve('file')) {
-                    return $file;
-                } else {
-                    return sprintf(
-                        '%s.%s.%s%s%s.tgz',
-                        (new \DateTime())->format('Ymd.U'),
-                        $c->resolve('target_env'),
-                        $c->resolve(sprintf('envs.%s.db', $c->resolve('target_env'))),
-                        (!empty($c->resolve('table'))) ? '.' . $c->resolve('table') : null,
-                        (!empty($c->resolve('where'))) ? '.' . rtrim(base64_encode($c->resolve('where')),'=') : null
-                    );
-                }
-            });
+    /**
+     * @{inheritDoc}
+     */
+    public function getTaskListeners()
+    {
+        return [
+            'content.db.pull' => 'updateCommands',
+            'content.db.push' => 'updateCommands'
+        ];
+    }
 
-        $container->decl(
-            ['content', 'local_db'],
-            function(Container $c) {
-                // check if db is given as argument.
-                if (false !== ($db = $c->resolve('local_db'))) {
-                    return $db;
-                } else {
-                    // check if a local db is defined
-                    if (null !== ($db = $c->resolve('envs.local.db'))) {
-                        return $db;
-                    } else {
-                        // fallback to target envs db
-                        return $c->resolve(sprintf('envs.%s.db', $c->resolve('target_env')));
-                    }
-                }
+    /**
+     * Update some command with extra descriptions for help.
+     *
+     * @param TaskCommand $command
+     */
+    public function updateCommands(TaskCommand $command)
+    {
+        $definition = $command->getDefinition();
+        $options = $definition->getOptions();
+
+        foreach (array_keys($options) as $name) {
+            switch ($name) {
+                case 'where':
+                    $options['where'] = new InputOption('where', null, InputOption::VALUE_REQUIRED, 'Dump only rows selected by given WHERE condition.');
+                    break;
+                case 'database':
+                    $options['database'] = new InputOption('database', null, InputOption::VALUE_REQUIRED, 'The local db to push to.');
+                    break;
+                case 'defaults-local':
+                    $options['defaults-local'] = new InputOption('defaults-local', null, InputOption::VALUE_REQUIRED, 'The defaults file used fot the mysql client. <comment>(defaults to ./etc/mysql/local.cnf if exitsts.)</comment>');
+                    break;
+                case 'defaults-remote':
+                    $options['defaults-remote'] = new InputOption('defaults-remote', null, InputOption::VALUE_REQUIRED, 'The defaults file used fot the mysqldump. <comment>(defaults to ~/.my.cnf on remote.)</comment>');
+                    break;
+                case 'table':
+                    $options['table'] = new InputOption('table', null, InputOption::VALUE_IS_ARRAY|InputOption::VALUE_REQUIRED, 'Dump only the given table.');
+                    break;
+                case 'no-drop':
+                    $options['no-drop'] = new InputOption('no-drop', null, InputOption::VALUE_NONE, 'Not drop local database (default if a table or where option is given).');
+                    break;
+                case 'drop':
+                    $options['drop'] = new InputOption('drop', null, InputOption::VALUE_NONE, 'Drop local database (default if no table or where option is given).');
+                    break;
+                case 'no-local':
+                    $options['no-local'] = new InputOption('no-local', null, InputOption::VALUE_NONE, 'Not wrap the mysqldump in a ssh command.');
+                    break;
+                case 'local':
+                    $options['local'] = new InputOption('local', null, InputOption::VALUE_NONE, 'Wrappes the mysqldump in a ssh command <comment>(default true)</comment>.');
+                    break;
+                case 'no-stdout':
+                    $options['no-stdout'] = new InputOption('no-stdout', null, InputOption::VALUE_NONE, 'Will forward the mysqldump stdout to a mysqlclinet local <comment>default true</comment>.');
+                    break;
+                case 'stdout':
+                    $options['stdout'] = new InputOption('stdout', 'o', InputOption::VALUE_NONE, 'Print the mysqldump to stdout.');
+                    break;
+                case 'file':
+                    $options['file'] = new InputOption('file', null, InputOption::VALUE_REQUIRED, 'Cat file and redirect output to mysql client..');
+                    break;
+                case 'no-backup':
+                    $options['no-backup'] = new InputOption('no-backup', null, InputOption::VALUE_NONE, 'Do not create backup before pushing to the remote..');
+                    break;
+                case 'backup':
+                    $options['backup'] = new InputOption('backup', null, InputOption::VALUE_NONE, 'Create a backup from a remote dump before pushing <comment>(default true)</comment>.');
+                    break;
             }
-        );
+        }
+        $definition->setOptions($options);
     }
 }
