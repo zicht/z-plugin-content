@@ -54,17 +54,15 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
     public function setContainer(Container $container)
     {
 
-        $container->decl(
+        $container->fn(
             ['content', 'is_local'],
             function (Container $c) {
-
                 if ($c->resolve('local')) {
                     return true;
                 }
-
                 return in_array($c->resolve('target_env'), $c->resolve('content.local_envs'));
-
-            }
+            },
+            true
         );
 
         $container->fn(
