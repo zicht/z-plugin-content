@@ -57,7 +57,6 @@ tasks:
             @(for d in content.dir)
                 $(content.fmt.cmd.rsync(fmt.path(envs.local.root, d), fmt.path(sprintf("%s:%s", envs[target_env].ssh, envs[target_env].root), d)))
 
-
     content.db.pull:
         help: |
             Pull remote database/table to local database/table.
