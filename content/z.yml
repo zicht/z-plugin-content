@@ -30,7 +30,7 @@ tasks:
             delete: false
         do: |
             @(for d in content.dir)
-                $(content.fmt.cmd.rsync(fmt.path(sprintf("%s:%s", envs[target_env].ssh, envs[target_env].root), d),fmt.path(envs.local.root, d)))
+                $(content.fmt.cmd.rsync(content.fmt.path(sprintf("%s:%s", envs[target_env].ssh, envs[target_env].root), d),content.fmt.path(envs.local.root, d)))
 
     content.files.push:
         help: |
@@ -55,7 +55,7 @@ tasks:
             delete: false
         do: |
             @(for d in content.dir)
-                $(content.fmt.cmd.rsync(fmt.path(envs.local.root, d), fmt.path(sprintf("%s:%s", envs[target_env].ssh, envs[target_env].root), d)))
+                $(content.fmt.cmd.rsync(content.fmt.path(envs.local.root, d), content.fmt.path(sprintf("%s:%s", envs[target_env].ssh, envs[target_env].root), d)))
 
     content.db.pull:
         help: |
