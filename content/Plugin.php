@@ -53,6 +53,21 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
      */
     public function setContainer(Container $container)
     {
+        
+         $container->fn(
+            ['content', 'fmt', 'path'],
+            function(...$parts) {
+                $path = "";
+                for ($c = 0, $ci = count($parts); $c < $ci; $c++) {
+                    if (DIRECTORY_SEPARATOR !== substr($parts[$c], -1)) {
+                        $parts[$c] .= DIRECTORY_SEPARATOR;
+                    }
+                    $path .= $parts[$c];
+                }
+                return $path;
+            }
+        );
+        
         $container->fn(
             ['content', 'is_local'],
             function (Container $c) {
