@@ -98,7 +98,9 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
                     return "--default-file=${input}";
                 }
 
-                if ($c->resolve('content.is_local')[0]($c) && is_file(sprintf('./etc/mysql/.%s.cnf', $c->resolve('target_env')))) {
+                $isLocal = $c->resolve('content.is_local')[0];
+
+                if ($isLocal($c) && is_file(sprintf('./etc/mysql/.%s.cnf', $c->resolve('target_env')))) {
                     return sprintf('--defaults-file=./etc/mysql/.%s.cnf', $c->resolve('target_env'));
                 }
 
@@ -184,7 +186,8 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
     {
         return [
             'content.db.pull' => 'updateCommands',
-            'content.db.push' => 'updateCommands'
+            'content.db.push' => 'updateCommands',
+            'content.db.backup' => 'updateCommands',
         ];
     }
 
@@ -207,25 +210,25 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
                     $options['database'] = new InputOption('database', null, InputOption::VALUE_REQUIRED, 'The local db to push to.');
                     break;
                 case 'defaults-local':
-                    $options['defaults-local'] = new InputOption('defaults-local', null, InputOption::VALUE_REQUIRED, 'The defaults file used fot the mysql client. <comment>(defaults to ./etc/mysql/local.cnf if exitsts.)</comment>');
+                    $options['defaults-local'] = new InputOption('defaults-local', null, InputOption::VALUE_REQUIRED, 'The defaults file used fot the mysql client. <comment>(defaults to ./etc/mysql/local.cnf if exists.)</comment>');
                     break;
                 case 'defaults-remote':
-                    $options['defaults-remote'] = new InputOption('defaults-remote', 'ddd', InputOption::VALUE_REQUIRED, 'The defaults file used fot the mysqldump. <comment>(defaults to ~/.my.cnf on remote.)</comment>');
+                    $options['defaults-remote'] = new InputOption('defaults-remote', null, InputOption::VALUE_REQUIRED, 'The defaults file used for the mysqldump. <comment>(defaults to ~/.my.cnf on remote.)</comment>');
                     break;
                 case 'table':
                     $options['table'] = new InputOption('table', null, InputOption::VALUE_IS_ARRAY|InputOption::VALUE_REQUIRED, 'Dump only the given table.');
                     break;
                 case 'no-drop':
-                    $options['no-drop'] = new InputOption('no-drop', null, InputOption::VALUE_NONE, 'Not drop local database (default if a table or where option is given).');
+                    $options['no-drop'] = new InputOption('no-drop', null, InputOption::VALUE_NONE, 'Do not drop the local database (default if a table or where option is given).');
                     break;
                 case 'drop':
-                    $options['drop'] = new InputOption('drop', null, InputOption::VALUE_NONE, 'Drop local database (default if no table or where option is given).');
+                    $options['drop'] = new InputOption('drop', null, InputOption::VALUE_NONE, 'Drop local database <comment>(default true, if no table or where option is given)</comment>.');
                     break;
                 case 'no-local':
-                    $options['no-local'] = new InputOption('no-local', null, InputOption::VALUE_NONE, 'Not wrap the mysqldump in a ssh command.');
+                    $options['no-local'] = new InputOption('no-local', null, InputOption::VALUE_NONE, 'Do not wrap the mysqldump in a ssh command.');
                     break;
                 case 'local':
-                    $options['local'] = new InputOption('local', null, InputOption::VALUE_NONE, 'Wrappes the mysqldump in a ssh command <comment>(default true)</comment>.');
+                    $options['local'] = new InputOption('local', 'l', InputOption::VALUE_NONE, 'Wrappes the mysqldump in a ssh command <comment>(default true)</comment>.');
                     break;
                 case 'no-stdout':
                     $options['no-stdout'] = new InputOption('no-stdout', null, InputOption::VALUE_NONE, 'Will forward the mysqldump stdout to a mysqlclient local <comment>default true</comment>.');
@@ -237,10 +240,10 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
                     $options['file'] = new InputOption('file', null, InputOption::VALUE_REQUIRED, 'Cat file and redirect output to mysql client.');
                     break;
                 case 'no-backup':
-                    $options['no-backup'] = new InputOption('no-backup', null, InputOption::VALUE_NONE, 'Do not create backup before pushing to the remote.');
+                    $options['no-backup'] = new InputOption('no-backup', null, InputOption::VALUE_NONE, 'Do not create a backup before pushing to the remote.');
                     break;
                 case 'backup':
-                    $options['backup'] = new InputOption('backup', null, InputOption::VALUE_NONE, 'Create a backup from a remote dump before pushing <comment>(default true)</comment>.');
+                    $options['backup'] = new InputOption('backup', null, InputOption::VALUE_NONE, 'Create a backup from a remote before pushing <comment>(default true)</comment>.');
                     break;
             }
         }

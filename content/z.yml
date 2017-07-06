@@ -12,13 +12,13 @@ tasks:
             Sync remote with local content folder.
 
             Use the content.dir to define the folder to sync and
-            content.exlude for exlusion of folder within that folder.
+            content.exclude for exclusion of folder within that folder.
 
             The --rsync-flags flag can be used to overwrite the rsync flags, so for example:
 
             z content:files:pull --rsync-flags="-ru --delete --inplace" production
 
-            will genertae something like:
+            will generate something like:
 
             rsync -ru --delete --inplace example@example.com:/home/example/web/media/ ./web/media/
         args:
@@ -37,13 +37,13 @@ tasks:
             Sync local with remote content folder.
 
             Use the content.dir to define the folder to sync and
-            content.exlude for exlusion of folder within that folder.
+            content.exclude for exclusion of folder within that folder.
 
             The --rsync-flags flag can be used to overwrite the rsync flags, so for example:
 
             z content:files:push --rsync-flags="-ru --delete --inplace" production
 
-            will genertae something like:
+            will generate something like:
 
             rsync -ru --delete --inplace ./web/media/ example@example.com:/home/example/web/media/
         args:
@@ -72,12 +72,11 @@ tasks:
                 https://dev.mysql.com/doc/refman/5.7/en/option-files.html
 
 
-        # will ad following flags by plugin.
+        # will add following flags by plugin.
         flags:
             drop: true
             local: false
             stdout: false
-            # will ad following flags by plugin.
         opts:
             table: false
             where: false
@@ -87,7 +86,9 @@ tasks:
         args:
             target_env: ?
         do:
+            - @(if drop && !table && !where) echo "Dropping database <comment>$(database)</comment>"; echo "Creating database <comment>$(database)</comment>";
             - @(if drop && !table && !where) mysql $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) -e "DROP DATABASE IF EXISTS $(database); CREATE DATABASE $(database);"
+            - @(if !stdout) echo "Pull database from <info>$(target_env)</info> into <comment>$(database)</comment>"
             - @(if !stdout) $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysqldump $(content.fmt.defaults.remote) --opt -Q$(VERBOSE ? "v") $(where ? sprintf("--where='%s'", where)) $(envs[target_env].db) $(table ? table) $(!content.is_local() ? content.fmt.ssh.suffix(target_env)) | mysql $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) $(database)
             - @(if stdout)  $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysqldump $(content.fmt.defaults.remote) --opt -Q$(VERBOSE ? "v") $(where ? sprintf("--where='%s'", where)) $(envs[target_env].db) $(table ? table) $(!content.is_local() ? content.fmt.ssh.suffix(target_env))
 
@@ -111,12 +112,15 @@ tasks:
             target_env: ?
 
         do:
+            - @(if backup && !table) echo "Backup database from <info>$(target_env)</info>"
             - @(if backup && !table) $(z.cmd) content:db:pull $(target_env) --stdout --no-drop $(where ? sprintf("--where='%s'", where)) | gzip -c > $$(date +%Y%m%d)$(where ? sprintf(".%s", sha1(where))).$(target_env).sql.gz
             - @(if backup && table) @(for d in table) echo $(table) $(z.cmd) content:db:pull $(target_env) --stdout --no-drop $(where ? sprintf("--where='%s'", where)) --table="$(d)" | gzip -c > $$(date +%Y%m%d).$(d).$(target_env).sql.gz
             - @(if file)  cat $(file) | $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysql $(content.fmt.defaults.remote) --opt -Q$(VERBOSE ? "v") $(envs[target_env].db) $(!content.is_local() ? content.fmt.ssh.suffix(target_env))
             - @(if !file) mysqldump $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) $(where ? sprintf("--where='%s'", where)) $(database) $(table ? table) | $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysql $(content.fmt.defaults.remote) --opt -Q$(VERBOSE ? "v") $(envs[target_env].db)$(!content.is_local() ? content.fmt.ssh.suffix(target_env))
 
     content.db.backup:
+        help: |
+            Create a backup from remote database to a file
         args:
             target_env: ?
         flags:
