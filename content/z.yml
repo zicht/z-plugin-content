@@ -116,3 +116,11 @@ tasks:
             - @(if backup && table) @(for d in table) echo $(table) $(z.cmd) content:db:pull $(target_env) --stdout --no-drop $(where ? sprintf("--where='%s'", where)) --table="$(d)" | gzip -c > $$(date +%Y%m%d).$(d).$(target_env).sql.gz
             - @(if file)  cat $(file) | $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysql $(content.fmt.defaults.remote) --opt -Q$(VERBOSE ? "v") $(envs[target_env].db) $(!content.is_local() ? content.fmt.ssh.suffix(target_env))
             - @(if !file) mysqldump $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) $(where ? sprintf("--where='%s'", where)) $(database) $(table ? table) | $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysql $(content.fmt.defaults.remote) --opt -Q$(VERBOSE ? "v") $(envs[target_env].db)$(!content.is_local() ? content.fmt.ssh.suffix(target_env))
+
+    content.db.backup:
+        args:
+            target_env: ?
+        flags:
+            local: false
+        do:
+            - $(z.cmd) content:db:pull $(target_env) --stdout $(local ? "--local") --no-drop | gzip -c > $$(date +%Y%m%d).$(target_env).sql.gz

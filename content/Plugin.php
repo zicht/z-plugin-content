@@ -81,7 +81,7 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
                     return "--default-file=${input}";
                 }
 
-                if ($c->resolve('local') && is_file(sprintf('./etc/mysql/.%s.cnf', $c->resolve('target_env')))) {
+                if ($c->resolve('content.is_local')[0]($c) && is_file(sprintf('./etc/mysql/.%s.cnf', $c->resolve('target_env')))) {
                     return sprintf('--defaults-file=./etc/mysql/.%s.cnf', $c->resolve('target_env'));
                 }
 
