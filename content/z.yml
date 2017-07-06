@@ -5,10 +5,6 @@ content:
     # Dirs that contain user content (i.e. uploaded files and such)
     dir:            [ 'web/media' ]
     exclude:        [ "cache" ]
-    local:
-        db:
-            host: mysql.zicht.intern
-            user: dev
 
 tasks:
     content.files.pull:
@@ -16,7 +12,7 @@ tasks:
             Sync remote with local content folder.
 
             Use the content.dir to define the folder to sync and
-            content.exlude for exlusion of folder within that folder.
+            content.exclude for exclusion of folder within that folder.
 
             The --rsync-flags flag can be used to overwrite the rsync flags, so for example:
 
@@ -34,14 +30,14 @@ tasks:
             delete: false
         do: |
             @(for d in content.dir)
-                $(fmt.cmd.rsync(fmt.path(sprintf("%s:%s", envs[target_env].ssh, envs[target_env].root), d),fmt.path(envs.local.root, d)))
+                $(content.fmt.cmd.rsync(content.fmt.path(sprintf("%s:%s", envs[target_env].ssh, envs[target_env].root), d),content.fmt.path(envs.local.root, d)))
 
     content.files.push:
         help: |
             Sync local with remote content folder.
 
             Use the content.dir to define the folder to sync and
-            content.exlude for exlusion of folder within that folder.
+            content.exclude for exclusion of folder within that folder.
 
             The --rsync-flags flag can be used to overwrite the rsync flags, so for example:
 
@@ -59,48 +55,82 @@ tasks:
             delete: false
         do: |
             @(for d in content.dir)
-                $(fmt.cmd.rsync(fmt.path(envs.local.root, d), fmt.path(sprintf("%s:%s", envs[target_env].ssh, envs[target_env].root), d)))
+                $(content.fmt.cmd.rsync(content.fmt.path(envs.local.root, d), content.fmt.path(sprintf("%s:%s", envs[target_env].ssh, envs[target_env].root), d)))
 
     content.db.pull:
         help: |
             Pull remote database/table to local database/table.
 
-            If flag <info>nodrop</info> is given, the database won't be dropped. Otherwise the local database will be dropped and recreated (unless the table flag is provided).
+            If flag <info>no-drop</info> is given, the database won`t be dropped. Otherwise the local database will be dropped and recreated (unless the table or where flag is provided).
 
-            With the <info>where</info> and <info>table</info> flag is it posible to only dump a certain table that match the WHERE statement.
+            To do a dump from remote to a local file this command can be executed the stdout flag:
+
+                <info>z content:db:pull production --no-drop  -o | gzip -c > $(date +%Y%m%d).production.sql.gz</info>
+
+            To us custom credentials/options for mysql(dump) see the defaults-local and defaults-remote options and:
+
+                https://dev.mysql.com/doc/refman/5.7/en/option-files.html
+
+
+        # will add following flags by plugin.
         flags:
             drop: true
+            local: false
+            stdout: false
         opts:
             table: false
             where: false
-            file: false
-
-            local_user: content.local.db.user
-            local_host: content.local.db.host
-            local_port:
-            local_password:
+            database: envs.local.db
+            defaults_local: if_exist("./etc/mysql/.local.cnf")
+            defaults_remote: false
         args:
             target_env: ?
-            local_db: ? false
-        do: $(fmt.mysql_pull)
-    content.db.push:
-         help: |
-             Push local database/table to remote database/table.
+        do:
+            - @(if drop && !table && !where) echo "Dropping database <comment>$(database)</comment>"; echo "Creating database <comment>$(database)</comment>";
+            - @(if drop && !table && !where) mysql $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) -e "DROP DATABASE IF EXISTS $(database); CREATE DATABASE $(database);"
+            - @(if !stdout) echo "Pull database from <info>$(target_env)</info> into <comment>$(database)</comment>"
+            - @(if !stdout) $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysqldump $(content.fmt.defaults.remote) --opt -Q$(VERBOSE ? "v") $(where ? sprintf("--where='%s'", where)) $(envs[target_env].db) $(table ? table) $(!content.is_local() ? content.fmt.ssh.suffix(target_env)) | mysql $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) $(database)
+            - @(if stdout)  $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysqldump $(content.fmt.defaults.remote) --opt -Q$(VERBOSE ? "v") $(where ? sprintf("--where='%s'", where)) $(envs[target_env].db) $(table ? table) $(!content.is_local() ? content.fmt.ssh.suffix(target_env))
 
-             The backup flag (that is default true) will make a backup of the tables or database before it pushes the
-             content to the given environment. See also the explain (--explain) flag.
-         flags:
-             backup: true
-         opts:
-             table: false
-             where: false
-             local_user: false
-             local_host: false
-             local_port: false
-             local_password: false
-         args:
-             target_env: ?
-             local_db: ? false
-         do:
-             - @(if backup != false) ssh $(envs[target_env].ssh) "mysqldump -Q --opt $(content.sql_where)$(envs[target_env].db) $(table ? table)| gzip -c -9" > $(fmt.sql_backup_file)
-             - mysqldump $(fmt.local_mysql_args) $(table ? table) $(content.sql_where)| ssh $(envs[target_env].ssh) "mysql $(envs[target_env].db)"
+    content.db.push:
+        help: |
+            Push mysql dump file to remote database/table.
+
+            The second parameter is the optional file:
+
+                <info>z content:db:push staging content-testing-20170706154516.tar.gz</info>
+
+            If the second parameter is omitted the local database will be used as the source
+        flags:
+            backup: true
+            local: false
+        opts:
+            table: false
+            where: false
+            database: envs.local.db
+            defaults_local: if_exist("./etc/mysql/.local.cnf")
+            defaults_remote: false
+        args:
+            target_env: ?
+            file: ? false
+        unless: !confirm(sprintf("You are pushing %s to environment <info>%s</info>, are you sure?", file ? sprintf("the file <comment>%s</comment>", file) : "<comment>your local database</comment>", target_env))
+        do:
+            - @(if backup && !table) echo "Backup database from <info>$(target_env)</info>"
+            - @(if backup && !table) $(z.cmd) content:db:pull $(target_env) --stdout --no-drop $(where ? sprintf("--where='%s'", where)) | gzip -c > $$(date +%Y%m%d)$(where ? sprintf(".%s", sha1(where))).$(target_env).sql.gz
+            - @(if backup && table) @(for d in table) echo $(table) $(z.cmd) content:db:pull $(target_env) --stdout --no-drop $(where ? sprintf("--where='%s'", where)) --table="$(d)" | gzip -c > $$(date +%Y%m%d).$(d).$(target_env).sql.gz
+            - echo "Pushing data to <info>$(target_env)</info>"
+            - @(if file) zcat $(file) | $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysql $(content.fmt.defaults.remote) $(VERBOSE ? "-v") $(envs[target_env].db) $(!content.is_local() ? content.fmt.ssh.suffix(target_env))
+            - @(if !file) mysqldump $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) $(where ? sprintf("--where='%s'", where)) $(database) $(table ? table) | $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysql $(content.fmt.defaults.remote) $(VERBOSE ? "-v") $(envs[target_env].db)$(!content.is_local() ? content.fmt.ssh.suffix(target_env))
+
+    content.db.backup:
+        help: |
+            Create a backup from a remote database to a file
+        args:
+            target_env: ?
+        set:
+            _backup_file: sprintf("content-%s-%s.tar.gz", target_env, now)
+        flags:
+            local: false
+        do:
+            - $(z.cmd) content:db:pull $(target_env) --stdout $(local ? "--local") --no-drop | gzip -c > $(_backup_file)
+            - echo "Backup <comment>$(_backup_file)</comment> created from <info>$(target_env)</info>"
