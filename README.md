@@ -11,5 +11,6 @@ The following tasks are available:
   `content:backup`)
 * Rsync'ing files (`content:download-files` and `content:upload-files`)
 
-# Maintainer(s)
-* Oskar van Velden <oskar@zicht.nl>
+# Maintainers
+* Philip Bergman <philip@zicht.nl>
+* Michael Roterman <michael@zicht.nl>
