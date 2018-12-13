@@ -26,12 +26,12 @@ tasks:
             delete: false
         do: |
           @(for d in content.dir)
-            [ ! -d "$(mount_dir)" ] && mkdir -p $(mount_dir)
-            trap "rmdir $(mount_dir)" EXIT SIGINT SIGTERM INT
-            sshfs "$(content.fmt.path(sprintf("%s:%s", envs[from].ssh, envs[from].root), d))" $(mount_dir)
-            trap "fusermount -u $(mount_dir) && rmdir $(mount_dir)" EXIT SIGINT SIGTERM INT
+            [ ! -d "$(path(mount_dir,d))" ] && mkdir -p $(path(mount_dir,d))
+            trap "rmdir $(path(mount_dir,d))" EXIT SIGINT SIGTERM INT
+            sshfs "$(content.fmt.path(sprintf("%s:%s", envs[from].ssh, envs[from].root), d))" $(path(mount_dir,d))
+            trap "fusermount -u $(path(mount_dir,d)) && rmdir $(path(mount_dir,d))" EXIT SIGINT SIGTERM INT
             $(content.fmt.cmd.rsync(
-                mount_dir,
+                sprintf("%s/", path(mount_dir,d)),
                 content.fmt.path(sprintf("%s:%s", envs[to].ssh, envs[to].root), d)
             ))
     content.files.pull:
