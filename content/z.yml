@@ -7,6 +7,33 @@ content:
     exclude:        [ "cache" ]
 
 tasks:
+    content.files.sync:
+        help: |
+            Sync remote with 2 remote envs like staging to testing. It will
+            do this by using sshfs to mount the "from" env to the mount-dir
+            (which defaults to /tmp/content_files_sync) and than an normal
+            rsync between the local folder and the remote path.
+
+            The rsync command is build the same as the pull/push command.
+        args:
+            from: ?
+            to: ?
+        opts:
+            rsync_flags:
+            mount_dir: str "/tmp/content_files_sync/"
+        flags:
+            simulate: false
+            delete: false
+        do: |
+          @(for d in content.dir)
+            [ ! -d "$(mount_dir)" ] && mkdir -p $(mount_dir)
+            trap "rmdir $(mount_dir)" EXIT SIGINT SIGTERM INT
+            sshfs "$(content.fmt.path(sprintf("%s:%s", envs[from].ssh, envs[from].root), d))" $(mount_dir)
+            trap "fusermount -u $(mount_dir) && rmdir $(mount_dir)" EXIT SIGINT SIGTERM INT
+            $(content.fmt.cmd.rsync(
+                mount_dir,
+                content.fmt.path(sprintf("%s:%s", envs[to].ssh, envs[to].root), d)
+            ))
     content.files.pull:
         help: |
             Sync remote with local content folder.
