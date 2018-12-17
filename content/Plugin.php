@@ -53,6 +53,16 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
      */
     public function setContainer(Container $container)
     {
+        $container->fn(
+            ['content', 'fmt', 'absolute_path'],
+            function(Container $c, $env, $path) {
+                if (preg_match('#(?P<user>[^@]+)#', $c->resolve("envs.${env}.ssh", true), $m)) {
+                    return str_replace('~', '/home/' . $m['user'], $path);
+                }
+                return $path;
+            },
+            true
+        );
         
          $container->fn(
             ['content', 'fmt', 'path'],
