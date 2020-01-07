@@ -156,8 +156,16 @@ tasks:
             target_env: ?
         set:
             _backup_file: sprintf("content-%s-%s.tar.gz", target_env, now)
+            _min_lines: 20
         flags:
             local: false
         do:
             - $(z.cmd) content:db:pull $(target_env) --stdout $(local ? "--local") --no-drop | gzip -c > $(_backup_file)
             - echo "Backup <comment>$(_backup_file)</comment> created from <info>$(target_env)</info>"
+            - |
+                if (( "$$(zcat $(_backup_file) | wc -l )" <= $(_min_lines) )); then
+                    echo "<error>The file contains only a few lines. File content is shown below so you can check for errors:</error>"
+                    zcat $(_backup_file)
+                else
+                    printf "Backup contains <comment>" && zcat $(_backup_file) | wc -l | tr -d '\n' && echo "</comment> lines"
+                fi
