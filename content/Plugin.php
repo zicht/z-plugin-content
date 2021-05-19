@@ -67,7 +67,7 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
          $container->fn(
             ['content', 'fmt', 'path'],
             function(...$parts) {
-                $path = "";
+                $path = '';
                 for ($c = 0, $ci = count($parts); $c < $ci; $c++) {
                     if (DIRECTORY_SEPARATOR !== substr($parts[$c], -1)) {
                         $parts[$c] .= DIRECTORY_SEPARATOR;
@@ -138,7 +138,7 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
             ['content', 'fmt', 'cmd', 'rsync'],
             function(Container $c, $src, $dest) {
                 if (null !== ($args = $c->resolve('rsync-flags'))) {
-                    return sprintf("rsync %s %s %s", $args, $src, $dest);
+                    return sprintf('rsync %s %s %s', $args, $src, $dest);
                 } else {
                     $long = [];
                     $short = [
@@ -146,26 +146,26 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
                         'u', //update
                     ];
                     if ($c->resolve('VERBOSE')) {
-                        $short[] = "v"; // verbose
-                        $short[] = "h"; // human-readable;
-                        $short[] = "p"; // progress
+                        $short[] = 'v'; // verbose
+                        $short[] = 'h'; // human-readable;
+                        $long[] = 'progress'; // progress
                     }
                     if ($c->resolve('simulate')) {
-                        $short[] = "n"; // dry-run
+                        $short[] = 'n'; // dry-run
                     }
                     if ($c->resolve('delete')) {
-                        $long[] = "delete";
+                        $long[] = 'delete';
                     }
                     if (null !== ($exclude = $c->resolve('content.exclude'))) {
                         foreach((array) $exclude as $e) {
-                            $long[] = sprintf("exclude=%s", $e);
+                            $long[] = sprintf('exclude=%s', $e);
                         }
                     }
                     return preg_replace(
                         '#\s{2,}#',
                         '',
                         sprintf(
-                            "rsync -%s %s %s %s",
+                            'rsync -%s %s %s %s',
                             implode(
                                 '',
                                 $short
