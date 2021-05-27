@@ -116,8 +116,8 @@ tasks:
             - @(if drop && !table && !where) echo "Dropping database <comment>$(database)</comment>"; echo "Creating database <comment>$(database)</comment>";
             - @(if drop && !table && !where) mysql $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) -e "DROP DATABASE IF EXISTS $(database); CREATE DATABASE $(database);"
             - @(if !stdout) echo "Pull database from <info>$(target_env)</info> into <comment>$(database)</comment>"
-            - @(if !stdout) $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysqldump $(content.fmt.defaults.remote) --opt -Q$(VERBOSE ? "v") $(where ? sprintf("--where='%s'", where)) $(envs[target_env].db) $(table ? table) $(!content.is_local() ? content.fmt.ssh.suffix(target_env)) | mysql $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) $(database)
-            - @(if stdout)  $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysqldump $(content.fmt.defaults.remote) --opt -Q$(VERBOSE ? "v") $(where ? sprintf("--where='%s'", where)) $(envs[target_env].db) $(table ? table) $(!content.is_local() ? content.fmt.ssh.suffix(target_env))
+            - @(if !stdout) $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysqldump $(content.fmt.defaults.remote) --opt -Q --no-tablespaces$(VERBOSE ? " -v")$(where ? sprintf(" --where='%s'", where)) $(envs[target_env].db) $(table ? table) $(!content.is_local() ? content.fmt.ssh.suffix(target_env)) | mysql $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) $(database)
+            - @(if stdout)  $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysqldump $(content.fmt.defaults.remote) --opt -Q --no-tablespaces$(VERBOSE ? " -v")$(where ? sprintf(" --where='%s'", where)) $(envs[target_env].db) $(table ? table) $(!content.is_local() ? content.fmt.ssh.suffix(target_env))
 
     content.db.push:
         help: |
