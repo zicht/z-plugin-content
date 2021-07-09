@@ -12,5 +12,4 @@ The following tasks are available:
 * Rsync'ing files (`content:download-files` and `content:upload-files`)
 
 # Maintainers
-* Philip Bergman <philip@zicht.nl>
-* Michael Roterman <michael@zicht.nl>
+* Jochem Klaver <jochem@zicht.nl>
