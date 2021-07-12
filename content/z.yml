@@ -155,7 +155,7 @@ tasks:
         args:
             target_env: ?
         set:
-            _backup_file: sprintf("content-%s-%s.tar.gz", target_env, now)
+            _backup_file: sprintf("content-%s-%s.sql.gz", target_env, now)
             _min_lines: 20
         flags:
             local: false
