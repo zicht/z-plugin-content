@@ -109,6 +109,7 @@ tasks:
             where: false
             database: envs.local.db
             defaults_local: if_exist("./etc/mysql/.local.cnf")
+            defaults_extra_local: if_exist("./etc/mysql/.my.cnf")
             defaults_remote: false
         args:
             target_env: ?

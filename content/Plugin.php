@@ -63,7 +63,7 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
             },
             true
         );
-        
+
          $container->fn(
             ['content', 'fmt', 'path'],
             function(...$parts) {
@@ -77,7 +77,7 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
                 return $path;
             }
         );
-        
+
         $container->fn(
             ['content', 'is_local'],
             function (Container $c) {
@@ -110,8 +110,16 @@ class Plugin extends BasePlugin implements PluginTaskListenerInterface
 
                 $isLocal = $c->resolve('content.is_local')[0];
 
+                $ret = null;
                 if ($isLocal($c) && is_file(sprintf('./etc/mysql/.%s.cnf', $c->resolve('target_env')))) {
-                    return sprintf('--defaults-file=./etc/mysql/.%s.cnf', $c->resolve('target_env'));
+                    $ret = sprintf('--defaults-file=./etc/mysql/.%s.cnf', $c->resolve('target_env'));
+                }
+                if ($isLocal($c) && is_file($c->resolve('defaults_extra_local'))) {
+                    $ret .= sprintf(' --defaults-extra-file=%s', $c->resolve('defaults_extra_local'));
+                }
+
+                if ($ret) {
+                    return $ret;
                 }
 
                 return false;
