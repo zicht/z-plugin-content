@@ -114,11 +114,11 @@ tasks:
         args:
             target_env: ?
         do:
-            - @(if drop && !table && !where) echo "Dropping database <comment>$(database)</comment>"; echo "Creating database <comment>$(database)</comment>";
-            - @(if drop && !table && !where) mysql $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) -e "DROP DATABASE IF EXISTS $(database); CREATE DATABASE $(database);"
-            - @(if !stdout) echo "Pull database from <info>$(target_env)</info> into <comment>$(database)</comment>"
-            - @(if !stdout) $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysqldump $(content.fmt.defaults.remote) --opt -Q --no-tablespaces$(VERBOSE ? " -v")$(where ? sprintf(" --where='%s'", where)) $(envs[target_env].db) $(table ? table) $(!content.is_local() ? content.fmt.ssh.suffix(target_env)) | mysql $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) $(database)
-            - @(if stdout)  $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysqldump $(content.fmt.defaults.remote) --opt -Q --no-tablespaces$(VERBOSE ? " -v")$(where ? sprintf(" --where='%s'", where)) $(envs[target_env].db) $(table ? table) $(!content.is_local() ? content.fmt.ssh.suffix(target_env))
+            - '@(if drop && !table && !where) echo "Dropping database <comment>$(database)</comment>"; echo "Creating database <comment>$(database)</comment>";'
+            - '@(if drop && !table && !where) mysql $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) -e "DROP DATABASE IF EXISTS $(database); CREATE DATABASE $(database);"'
+            - '@(if !stdout) echo "Pull database from <info>$(target_env)</info> into <comment>$(database)</comment>"'
+            - '@(if !stdout) $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysqldump $(content.fmt.defaults.remote) --opt -Q --no-tablespaces$(VERBOSE ? " -v")$(where ? sprintf(" --where=''%s''", where)) $(envs[target_env].db) $(table ? table) $(!content.is_local() ? content.fmt.ssh.suffix(target_env)) | mysql $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) $(database)'
+            - '@(if stdout)  $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysqldump $(content.fmt.defaults.remote) --opt -Q --no-tablespaces$(VERBOSE ? " -v")$(where ? sprintf(" --where=''%s''", where)) $(envs[target_env].db) $(table ? table) $(!content.is_local() ? content.fmt.ssh.suffix(target_env))'
 
     content.db.push:
         help: |
@@ -141,14 +141,14 @@ tasks:
         args:
             target_env: ?
             file: ? false
-        unless: !confirm(sprintf("You are pushing %s to environment <info>%s</info>, are you sure?", file ? sprintf("the file <comment>%s</comment>", file) : "<comment>your local database</comment>", target_env))
+        unless: '!confirm(sprintf("You are pushing %s to environment <info>%s</info>, are you sure?", file ? sprintf("the file <comment>%s</comment>", file) : "<comment>your local database</comment>", target_env))'
         do:
-            - @(if backup && !table) echo "Backup database from <info>$(target_env)</info>"
-            - @(if backup && !table) $(z.cmd) content:db:pull $(target_env) --stdout --no-drop $(where ? sprintf("--where='%s'", where)) | gzip -c > $$(date +%Y%m%d)$(where ? sprintf(".%s", sha1(where))).$(target_env).sql.gz
-            - @(if backup && table) @(for d in table) echo $(table) $(z.cmd) content:db:pull $(target_env) --stdout --no-drop $(where ? sprintf("--where='%s'", where)) --table="$(d)" | gzip -c > $$(date +%Y%m%d).$(d).$(target_env).sql.gz
+            - '@(if backup && !table) echo "Backup database from <info>$(target_env)</info>"'
+            - '@(if backup && !table) $(z.cmd) content:db:pull $(target_env) --stdout --no-drop $(where ? sprintf("--where=''%s''", where)) | gzip -c > $$(date +%Y%m%d)$(where ? sprintf(".%s", sha1(where))).$(target_env).sql.gz'
+            - '@(if backup && table) @(for d in table) echo $(table) $(z.cmd) content:db:pull $(target_env) --stdout --no-drop $(where ? sprintf("--where=''%s''", where)) --table="$(d)" | gzip -c > $$(date +%Y%m%d).$(d).$(target_env).sql.gz'
             - echo "Pushing data to <info>$(target_env)</info>"
-            - @(if file) zcat $(file) | $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysql $(content.fmt.defaults.remote) $(VERBOSE ? "-v") $(envs[target_env].db) $(!content.is_local() ? content.fmt.ssh.suffix(target_env))
-            - @(if !file) mysqldump $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) $(where ? sprintf("--where='%s'", where)) $(database) $(table ? table) | $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysql $(content.fmt.defaults.remote) $(VERBOSE ? "-v") $(envs[target_env].db)$(!content.is_local() ? content.fmt.ssh.suffix(target_env))
+            - '@(if file) zcat $(file) | $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysql $(content.fmt.defaults.remote) $(VERBOSE ? "-v") $(envs[target_env].db) $(!content.is_local() ? content.fmt.ssh.suffix(target_env))'
+            - '@(if !file) mysqldump $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) $(where ? sprintf("--where=''%s''", where)) $(database) $(table ? table) | $(!content.is_local() ? content.fmt.ssh.prefix(target_env))mysql $(content.fmt.defaults.remote) $(VERBOSE ? "-v") $(envs[target_env].db)$(!content.is_local() ? content.fmt.ssh.suffix(target_env))'
 
     content.db.backup:
         help: |
@@ -161,7 +161,7 @@ tasks:
         flags:
             local: false
         do:
-            - $(z.cmd) content:db:pull $(target_env) --stdout $(local ? "--local") --no-drop | gzip -c > $(_backup_file)
+            - '$(z.cmd) content:db:pull $(target_env) --stdout $(local ? "--local") --no-drop | gzip -c > $(_backup_file)'
             - echo "Backup <comment>$(_backup_file)</comment> created from <info>$(target_env)</info>"
             - |
                 if (( "$$(zcat $(_backup_file) | wc -l )" <= $(_min_lines) )); then
