@@ -114,6 +114,7 @@ tasks:
         args:
             target_env: ?
         do:
+            - '@(if !ssh.connectable(envs[target_env].ssh, envs[target_env].ssh_port)) $(block(sprintf("WARNING: SSH check failed.\nCould not connect to %s on port %d. Is your public IP address %s allowed to connect? Should you enable VPN?", envs[target_env].ssh, envs[target_env].ssh_port, public_ip()), "fg=black;bg=yellow"))'
             - '@(if drop && !table && !where) echo "Dropping database <comment>$(database)</comment>"; echo "Creating database <comment>$(database)</comment>";'
             - '@(if drop && !table && !where) mysql $(defaults_local ? sprintf("--defaults-file=%s", defaults_local)) -e "DROP DATABASE IF EXISTS $(database); CREATE DATABASE $(database);"'
             - '@(if !stdout) echo "Pull database from <info>$(target_env)</info> into <comment>$(database)</comment>"'
